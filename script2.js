@@ -1,5 +1,5 @@
 // ==============================================
-// CHARACTER CONTROLLER TEMPLATE: SHAKE DETECTION
+// CHARACTER CONTROLLER TEMPLATE: SHAKE DETECTION + TOUCH STRETCH
 // ==============================================
 // This example demonstrates how DEVICE SHAKE can affect a parameter.
 // 
@@ -8,11 +8,12 @@
 // - Keeping device still allows stress recovery
 // - Shake intensity tracked via global variable
 // - High stress causes visual distortion and affects movement
+// - Two-finger touch changes image and stretches character
 //
 // PATTERN: INPUT → PARAMETER → OUTPUT
-// - INPUT: deviceShaken() sensor
+// - INPUT: deviceShaken() sensor + Two-finger touch
 // - PARAMETER: stress (0-100) + shakeIntensity (global variable)
-// - OUTPUT: Color shift, position jitter, movement speed
+// - OUTPUT: Color shift, position jitter, movement speed, image stretch
 //
 // ==============================================
 
@@ -48,8 +49,18 @@ let characterImageRight;
 let characterImageLeft;
 let stressedImageRight;
 let stressedImageLeft;
+let stretchedImage; // New stretched image
 let isStressed = false;
+let isStretched = false; // New stretched state
 let stressCooldown = 0;
+let stretchCooldown = 0; // New stretch cooldown
+
+// Touch stretching variables
+let touchDistance = 0;
+let isTouchingCharacter = false;
+let baseScale = 0.2;
+let maxStretchScale = 1.5; // Maximum stretch scale
+let minStretchScale = 0.1; // Minimum squeeze scale
 
 // Movement settings - Autonomous wandering
 const BASE_WALK_SPEED = 2.5;
@@ -81,6 +92,7 @@ function preload() {
   characterImageLeft = loadImage('sasha-back.jpg'); // Replace with your normal left-facing image
   stressedImageRight = loadImage('sasha-crumple.png'); // Replace with your stressed right-facing image
   stressedImageLeft = loadImage('sasha-crumple.png'); // Replace with your stressed left-facing image
+  stretchedImage = loadImage('sasha-front-stretched.png'); // Replace with your stretched image
 }
 
 // ==============================================
@@ -101,7 +113,7 @@ function setup() {
   
   // Create character sprite at center
   character = new Sprite(width / 2, height / 2);
-  character.scale = 0.2;
+  character.scale = baseScale;
   character.physics = 'kinematic';
   character.collider = 'none';
   
@@ -125,16 +137,20 @@ function draw() {
   updateShakeIntensity();
   updateStressParameter();
   updateStressState();
+  updateStretchState(); // New stretch state management
+  updateTouchStretching(); // New touch stretching system
   
-  // Only update wandering and movement if not stressed
-  if (!isStressed) {
+  // Only update wandering and movement if not stressed AND not stretched
+  if (!isStressed && !isStretched) {
     updateWandering();
     updateMovementSpeed();
     moveCharacterToTarget();
   } else {
-    // Apply jitter even when paused
-    character.x += jitterX;
-    character.y += jitterY;
+    // Apply jitter even when paused (if stressed)
+    if (isStressed) {
+      character.x += jitterX;
+      character.y += jitterY;
+    }
   }
   
   updateCharacterColor();
@@ -143,6 +159,7 @@ function draw() {
   // Visual elements
   drawStressBar();
   drawShakeIndicator();
+  drawTouchIndicator(); // New touch indicator
   
   // UI overlay
   if (showUI) {
@@ -151,10 +168,109 @@ function draw() {
 }
 
 // ==============================================
+// NEW: TOUCH STRETCHING SYSTEM
+// ==============================================
+function updateTouchStretching() {
+  // Only measure when there are exactly 2 touches AND character is being touched
+  if (touches.length === 2 && isTouchingCharacter) {
+    // Get positions of both touches
+    let x1 = touches[0].x;
+    let y1 = touches[0].y;
+    let x2 = touches[1].x;
+    let y2 = touches[1].y;
+    
+    // Calculate distance using Pythagorean theorem
+    touchDistance = dist(x1, y1, x2, y2);
+    
+    // Trigger stretched state if not already stretched
+    if (!isStretched) {
+      triggerStretchedState();
+    }
+    
+    // Calculate stretch scale based on touch distance
+    // Use a base distance of 100 pixels for normal scale
+    let stretchScale = map(touchDistance, 50, 300, minStretchScale, maxStretchScale);
+    stretchScale = constrain(stretchScale, minStretchScale, maxStretchScale);
+    
+    // Apply stretch to character
+    character.scale = stretchScale;
+    
+  } else if (touches.length !== 2 && isStretched) {
+    // End stretch when not using two fingers
+    endStretchedState();
+  }
+  
+  // Update touch detection
+  updateTouchCharacterDetection();
+}
+
+function updateTouchCharacterDetection() {
+  isTouchingCharacter = false;
+  
+  // Check if any touch is on the character
+  for (let touch of touches) {
+    let distance = dist(touch.x, touch.y, character.x, character.y);
+    // Consider it touching if within character bounds (adjust based on scale)
+    let touchRadius = (character.width * character.scale) / 2;
+    if (distance < touchRadius) {
+      isTouchingCharacter = true;
+      break;
+    }
+  }
+}
+
+function triggerStretchedState() {
+  isStretched = true;
+  stretchCooldown = 5; // Short cooldown to prevent flickering
+  
+  // Change to stretched image
+  character.img = stretchedImage;
+  
+  // Stop movement
+  targetX = character.x;
+  targetY = character.y;
+  
+  console.log('🔴 STRETCHED STATE: Movement paused, image changed to stretched');
+}
+
+function endStretchedState() {
+  isStretched = false;
+  
+  // Return to appropriate image based on direction and stress state
+  if (isStressed) {
+    if (characterDirection === 1) {
+      character.img = stressedImageRight;
+    } else {
+      character.img = stressedImageLeft;
+    }
+  } else {
+    if (characterDirection === 1) {
+      character.img = characterImageRight;
+    } else {
+      character.img = characterImageLeft;
+    }
+  }
+  
+  // Reset scale
+  character.scale = baseScale;
+  
+  // Resume wandering if not stressed
+  if (!isStressed) {
+    chooseNewWanderTarget();
+  }
+  
+  console.log('🔵 STRETCH ENDED: Returning to normal');
+}
+
+function updateStretchState() {
+  if (isStretched) {
+    stretchCooldown--;
+  }
+}
+
+// ==============================================
 // INPUT DETECTION: Device Shake Event
 // ==============================================
-// deviceShaken() is a p5.js EVENT CALLBACK (like mousePressed)
-// It's automatically called when the device is shaken
 function deviceShaken() {
   // Only respond if sensors are enabled
   if (window.sensorsEnabled) {
@@ -248,8 +364,8 @@ function updateStressParameter() {
 // CHARACTER AI: Autonomous Wandering
 // ==============================================
 function updateWandering() {
-  // Only wander if not stressed
-  if (!isStressed) {
+  // Only wander if not stressed AND not stretched
+  if (!isStressed && !isStretched) {
     // Timer to choose new destinations
     wanderTimer++;
     
@@ -305,8 +421,8 @@ function updateStressJitter() {
 // OUTPUT FUNCTION: Movement Speed
 // ==============================================
 function updateMovementSpeed() {
-  // Only update speed if not stressed
-  if (!isStressed) {
+  // Only update speed if not stressed AND not stretched
+  if (!isStressed && !isStretched) {
     // Stress affects movement speed
     if (stress >= STRESS_PANIC_THRESHOLD) {
       // Panicked - erratic fast movement
@@ -325,8 +441,8 @@ function updateMovementSpeed() {
 // OUTPUT FUNCTION: Character Movement
 // ==============================================
 function moveCharacterToTarget() {
-  // Only move if not stressed
-  if (!isStressed) {
+  // Only move if not stressed AND not stretched
+  if (!isStressed && !isStretched) {
     // Calculate distance to target
     let distance = dist(character.x, character.y, targetX, targetY);
     
@@ -367,14 +483,15 @@ function moveCharacterToTarget() {
 // ==============================================
 // INPUT HANDLING: Touch/Click
 // ==============================================
-// No mouse/touch input needed - character wanders autonomously
-// Only shake detection affects the character
-
-function mousePressed() {
-  return false;  // Prevent default
+function touchStarted() {
+  return false;  // Prevents default behavior
 }
 
-function touchStarted() {
+function touchEnded() {
+  return false;  // Prevents default behavior
+}
+
+function mousePressed() {
   return false;  // Prevent default
 }
 
@@ -443,6 +560,48 @@ function drawShakeIndicator() {
 }
 
 // ==============================================
+// NEW: TOUCH INDICATOR
+// ==============================================
+function drawTouchIndicator() {
+  if (touches.length > 0) {
+    push();
+    
+    let indicatorX = 20;
+    let indicatorY = height - 100;
+    
+    // Background
+    fill(0, 0, 0, 180);
+    noStroke();
+    rect(indicatorX - 10, indicatorY - 10, 200, 80, 5);
+    
+    // Title
+    fill(255, 200, 100);
+    textAlign(LEFT, TOP);
+    textSize(14);
+    text('👆 TOUCH STATUS', indicatorX, indicatorY);
+    indicatorY += 20;
+    
+    // Touch info
+    fill(255);
+    textSize(12);
+    text(`Touches: ${touches.length}/2`, indicatorX, indicatorY);
+    indicatorY += 16;
+    
+    if (touches.length === 2) {
+      text(`Distance: ${int(touchDistance)}px`, indicatorX, indicatorY);
+      indicatorY += 16;
+      text(`Scale: ${character.scale.toFixed(2)}x`, indicatorX, indicatorY);
+      indicatorY += 16;
+      text(`State: ${isStretched ? 'STRETCHED' : 'Normal'}`, indicatorX, indicatorY);
+    } else {
+      text('Use 2 fingers on character', indicatorX, indicatorY);
+    }
+    
+    pop();
+  }
+}
+
+// ==============================================
 // UI: Debug Information
 // ==============================================
 function drawUI() {
@@ -455,13 +614,13 @@ function drawUI() {
   // Semi-transparent background
   fill(0, 0, 0, 180);
   noStroke();
-  rect(x - 10, y - 10, 370, 280, 5);
+  rect(x - 10, y - 10, 370, 320, 5);
   
   // Title
   fill(255, 200, 0);
   textAlign(LEFT, TOP);
   textSize(16);
-  text('⚡ SHAKE DETECTION', x, y);
+  text('⚡ SHAKE + TOUCH CONTROLS', x, y);
   y += lineHeight * 1.5;
   
   // Global Variable Section
@@ -491,7 +650,7 @@ function drawUI() {
   // Input Section
   fill(100, 200, 255);
   textSize(14);
-  text('INPUT (DEVICE SHAKE):', x, y);
+  text('INPUT CONTROLS:', x, y);
   y += lineHeight;
   
   fill(255);
@@ -500,7 +659,7 @@ function drawUI() {
   y += lineHeight;
   text(`  Shake adds: +${STRESS_SHAKE_INCREASE} stress`, x, y);
   y += lineHeight;
-  text(`  Recovery: -${STRESS_RECOVERY}/frame`, x, y);
+  text(`  2-Finger Touch: Stretches character`, x, y);
   y += lineHeight * 1.3;
   
   // Thresholds
@@ -524,30 +683,15 @@ function drawUI() {
   
   fill(255);
   textSize(12);
-  text(`  Character: ${isStressed ? 'STRESSED 😫' : 'Normal 😌'}`, x, y);
+  text(`  Character: ${isStressed ? 'STRESSED 😫' : (isStretched ? 'STRETCHED 🔴' : 'Normal 😌')}`, x, y);
   y += lineHeight;
-  text(`  Movement: ${isStressed ? 'PAUSED' : 'Wandering'}`, x, y);
+  text(`  Movement: ${(isStressed || isStretched) ? 'PAUSED' : 'Wandering'}`, x, y);
   text(`  Direction: ${characterDirection === 1 ? 'Right →' : 'Left ←'}`, x, y);
   y += lineHeight;
   text(`  Speed: ${currentSpeed.toFixed(2)}x`, x, y);
   y += lineHeight;
+  text(`  Scale: ${character.scale.toFixed(2)}x`, x, y);
+  y += lineHeight;
   text(`  Jitter: ${(abs(jitterX) + abs(jitterY)).toFixed(2)}`, x, y);
   y += lineHeight;
-  text(`  Stress Cooldown: ${stressCooldown > 0 ? stressCooldown + ' frames' : 'None'}`, x, y);
-  y += lineHeight * 1.3;
-  
-  // Instructions
-  fill(200);
-  textSize(11);
-  if (!sensorsActive) {
-    text('Tap screen to enable motion sensors', x, y);
-    y += lineHeight;
-  }
-  text('Shake device to stress character!', x, y);
-  y += lineHeight;
-  text('Character pauses and changes image when shaken', x, y);
-  y += lineHeight;
-  text('Space: Toggle UI', x, y);
-  
-  pop();
-}
+  text(`  Stress Cooldown: ${stressCooldown > 0 ? stressCooldown + ' frames' : 'None'}
