@@ -92,7 +92,7 @@ function preload() {
   characterImageLeft = loadImage('sasha-back.jpg'); // Replace with your normal left-facing image
   stressedImageRight = loadImage('sasha-crumple.png'); // Replace with your stressed right-facing image
   stressedImageLeft = loadImage('sasha-crumple.png'); // Replace with your stressed left-facing image
-  stretchedImage = loadImage('sasha-front-stretched.png'); // Replace with your stretched image
+  stretchedImage = loadImage('sasha-crumple.png'); // Replace with your stretched image
 }
 
 // ==============================================
@@ -694,4 +694,26 @@ function drawUI() {
   y += lineHeight;
   text(`  Jitter: ${(abs(jitterX) + abs(jitterY)).toFixed(2)}`, x, y);
   y += lineHeight;
-  text(`  Stress Cooldown: ${stressCooldown > 0 ? stressCooldown + ' frames' : 'None'})
+  text(`  Stress Cooldown: ${stressCooldown > 0 ? stressCooldown + ' frames' : 'None'}`, x, y);
+  y += lineHeight * 1.3;
+  
+  // Instructions
+  fill(200);
+  textSize(11);
+  if (!sensorsActive) {
+    text('Tap screen to enable motion sensors', x, y);
+    y += lineHeight;
+  }
+  text('Shake device to stress character!', x, y);
+  y += lineHeight;
+  text('Use 2 fingers on character to stretch it', x, y);
+  y += lineHeight;
+  text('Character pauses during stress/stretch', x, y);
+  y += lineHeight;
+  text('Space: Toggle UI', x, y);
+  
+  pop();
+}
+// ==============================================
+// END OF CODE - Added missing closing bracket
+// ==============================================
