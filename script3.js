@@ -104,7 +104,7 @@ function setupCharacter() {
   character.scale = 0.2;
   character.physics = 'kinematic';
   character.collider = 'none';
-  character.img = characterImages.normalRight;
+//   character.img = characterImages.normalRight;
   currentCharacterImg = characterImages.normalRight;
   
   // Set initial random target position for wandering
@@ -137,7 +137,7 @@ function draw() {
     character.y += jitterY;
   }
   
-  updateCharacterColor();
+//   updateCharacterColor();
   updateStressJitter();
   updateCharacterAppearance();
   
@@ -240,7 +240,7 @@ function drawTransformedCharacter() {
   
   // Draw the character centered at the transformation point
   imageMode(CENTER);
-  image(currentCharacterImg, 0, 0, charWidth/2, charHeight/2);
+  image(currentCharacterImg, 0, 0, charWidth, charHeight/2);
   
   // Restore the transformation state
   pop();
@@ -305,13 +305,13 @@ function chooseNewWanderTarget() {
   targetY = random(100, height - 100);
 }
 
-function updateCharacterColor() {
-  let r = map(displayStress, 0, 100, 100, 255);
-  let g = map(displayStress, 0, 100, 255, 50);
-  let b = 100;
-  // Apply color tint to character (will be used in draw)
-  tint(r, g, b);
-}
+// function updateCharacterColor() {
+//   let r = map(displayStress, 0, 100, 100, 255);
+//   let g = map(displayStress, 0, 100, 255, 50);
+//   let b = 100;
+//   // Apply color tint to character (will be used in draw)
+//   tint(r, g, b);
+// }
 
 function updateStressJitter() {
   let jitterAmount = 0;
