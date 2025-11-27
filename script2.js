@@ -18,7 +18,8 @@ let initialMidY = 0;
 let hasTwoTouches = false;
 
 // Image and transformation variables
-let img;
+let img1, img2, img3;
+let currentImg;
 let stretchFactor = 1;
 let rotationAngle = 0;
 let translateX = 0;
@@ -26,9 +27,15 @@ let translateY = 0;
 let baseWidth = 700;
 let baseHeight = 300;
 
+// Distance thresholds for image switching
+const MIN_DISTANCE_THRESHOLD = 130;
+const MAX_DISTANCE_THRESHOLD = 250;
+
 function preload() {
-  // Load your image here - replace with your image path
-  img = loadImage('sasha.jpg');
+  // Load your images here - replace with your image paths
+  img1 = loadImage('sasha.jpg');
+  img2 = loadImage('sasha-front-ripped.png');
+  img3 = loadImage('sasha-rolled.png');
 }
 
 function setup() {
@@ -40,6 +47,9 @@ function setup() {
   // Set text properties
   textAlign(CENTER, CENTER);
   textSize(24);
+  
+  // Set initial image
+  currentImg = img1;
 }
 
 function draw() {
@@ -64,6 +74,15 @@ function draw() {
     
     // Calculate distance between the two touches
     touchDistance = dist(touch1X, touch1Y, touch2X, touch2Y);
+    
+    // Check distance thresholds and switch images
+    if (touchDistance > MAX_DISTANCE_THRESHOLD) {
+      currentImg = img2; // Switch to second image when distance > 250px
+    } else if (touchDistance < MIN_DISTANCE_THRESHOLD) {
+      currentImg = img3; // Switch to third image when distance < 130px
+    } else {
+      currentImg = img1; // Default image when between thresholds
+    }
     
     // Calculate current midpoint
     let currentMidX = (touch1X + touch2X) / 2;
@@ -108,6 +127,19 @@ function draw() {
     text("Rotation: " + degrees(rotationAngle).toFixed(1) + "°", 20, 140);
     text("Translation: (" + Math.round(translateX) + ", " + Math.round(translateY) + ")", 20, 170);
     
+    // Display current image state
+    let imageState = "Default Image";
+    if (currentImg === img2) {
+      imageState = "Stretched Image (>250px)";
+      fill(0, 150, 0); // Green for stretched state
+    } else if (currentImg === img3) {
+      imageState = "Compressed Image (<130px)";
+      fill(150, 0, 0); // Red for compressed state
+    } else {
+      fill(0, 0, 150); // Blue for default state
+    }
+    text("State: " + imageState, 20, 200);
+    
   } else {
     hasTwoTouches = false;
     
@@ -117,6 +149,9 @@ function draw() {
     translateX = 0;
     translateY = 0;
     
+    // Reset to default image when no touches
+    currentImg = img1;
+    
     // Draw the untransformed image
     drawTransformedImage();
     
@@ -125,6 +160,15 @@ function draw() {
     textSize(32);
     fill(100, 100, 100);
     text("Touch 2 points on the screen to transform", width/2, height/2 + 200);
+    
+    // Display threshold info
+    textAlign(LEFT, TOP);
+    textSize(16);
+    fill(0);
+    text("Distance Thresholds:", 20, 20);
+    text("• < 130px: Switch to compressed image", 20, 45);
+    text("• 130-250px: Default image", 20, 70);
+    text("• > 250px: Switch to stretched image", 20, 95);
   }
 }
 
@@ -146,13 +190,7 @@ function drawTransformedImage() {
   
   // Draw the image centered at the transformation point
   imageMode(CENTER);
-  image(img, 0, 0, imgWidth/2, imgHeight/2);
-  
-  // Draw a border around the image
-  noFill();
-  stroke(150);
-  strokeWeight(2);
-  rect(-imgWidth/4, -imgHeight/4, imgWidth/2, imgHeight/2);
+  image(currentImg, 0, 0, imgWidth/2, imgHeight/2);
   
   // Restore the transformation state
   pop();
