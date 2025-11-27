@@ -103,24 +103,24 @@ function draw() {
     // Draw the transformed image
     drawTransformedImage();
     
-    // Draw a line between the two touches
-    stroke(100, 100, 100);
-    strokeWeight(3);
-    line(touch1X, touch1Y, touch2X, touch2Y);
+    // // Draw a line between the two touches
+    // stroke(100, 100, 100);
+    // strokeWeight(3);
+    // line(touch1X, touch1Y, touch2X, touch2Y);
     
-    // Draw circles at each touch point
-    fill(255, 0, 0);
-    noStroke();
-    circle(touch1X, touch1Y, 30);
-    circle(touch2X, touch2Y, 30);
+    // // Draw circles at each touch point
+    // fill(255, 0, 0);
+    // noStroke();
+    // circle(touch1X, touch1Y, 30);
+    // circle(touch2X, touch2Y, 30);
     
-    // Draw distance text in the middle of the line
-    let midX = (touch1X + touch2X) / 2;
-    let midY = (touch1Y + touch2Y) / 2;
+    // // Draw distance text in the middle of the line
+    // let midX = (touch1X + touch2X) / 2;
+    // let midY = (touch1Y + touch2Y) / 2;
     
-    fill(0, 0, 0);
-    textSize(20);
-    text(Math.round(touchDistance) + " pixels", midX, midY - 30);
+    // fill(0, 0, 0);
+    // textSize(20);
+    // text(Math.round(touchDistance) + " pixels", midX, midY - 30);
     
     // Display coordinates and transformation info
     textAlign(LEFT, TOP);
