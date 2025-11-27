@@ -17,7 +17,7 @@ let stress = 0;
 let displayStress = 0;
 
 // Character movement
-const BASE_WALK_SPEED = 2.5;
+const BASE_WALK_SPEED = 10;
 let currentSpeed = BASE_WALK_SPEED;
 let targetX = 0;
 let targetY = 0;
