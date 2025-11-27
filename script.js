@@ -84,7 +84,7 @@ function preload() {
 // ==============================================
 function setup() {
   // Create portrait canvas (9:16 aspect ratio for mobile)
-  createCanvas(405, 720);
+  createCanvas(windowWidth, windowHeight);
   
   // Lock mobile gestures (prevent zoom/refresh)
   lockGestures();
@@ -112,7 +112,7 @@ function setup() {
 // DRAW - Main game loop
 // ==============================================
 function draw() {
-  background(30, 30, 40);
+  background(0, 0, 0);
   
   // Check if sensors are enabled
   sensorsActive = window.sensorsEnabled || false;
