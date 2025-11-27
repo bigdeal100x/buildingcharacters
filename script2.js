@@ -29,7 +29,7 @@ let baseHeight = 300;
 
 // Distance thresholds for image switching
 const MIN_DISTANCE_THRESHOLD = 130;
-const MAX_DISTANCE_THRESHOLD = 250;
+const MAX_DISTANCE_THRESHOLD = 400;
 
 function preload() {
   // Load your images here - replace with your image paths
@@ -53,7 +53,7 @@ function setup() {
 }
 
 function draw() {
-  background(240, 240, 240);
+  background(0);
   
   // Check if we have at least 2 touches
   if (touches.length >= 2) {
@@ -75,24 +75,30 @@ function draw() {
     // Calculate distance between the two touches
     touchDistance = dist(touch1X, touch1Y, touch2X, touch2Y);
     
-    // Check distance thresholds and switch images
-    if (touchDistance > MAX_DISTANCE_THRESHOLD) {
-      currentImg = img2; // Switch to second image when distance > 250px
-    } else if (touchDistance < MIN_DISTANCE_THRESHOLD) {
-      currentImg = img3; // Switch to third image when distance < 130px
-    } else {
-      currentImg = img1; // Default image when between thresholds
-    }
-    
     // Calculate current midpoint
     let currentMidX = (touch1X + touch2X) / 2;
     let currentMidY = (touch1Y + touch2Y) / 2;
     
     // Calculate transformations
-    stretchFactor = touchDistance / initialDistance;
     rotationAngle = atan2(touch2Y - touch1Y, touch2X - touch1X) - initialAngle;
     translateX = currentMidX - initialMidX;
     translateY = currentMidY - initialMidY;
+    
+    // Check distance thresholds and switch images + control stretching
+    let isBeyondThresholds = false;
+    
+    if (touchDistance > MAX_DISTANCE_THRESHOLD) {
+      currentImg = img2; // Switch to second image when distance > 250px
+      stretchFactor = MAX_DISTANCE_THRESHOLD / initialDistance; // Lock stretch at threshold
+      isBeyondThresholds = true;
+    } else if (touchDistance < MIN_DISTANCE_THRESHOLD) {
+      currentImg = img3; // Switch to third image when distance < 130px
+      stretchFactor = MIN_DISTANCE_THRESHOLD / initialDistance; // Lock stretch at threshold
+      isBeyondThresholds = true;
+    } else {
+      currentImg = img1; // Default image when between thresholds
+      stretchFactor = touchDistance / initialDistance; // Normal stretching
+    }
     
     // Draw the transformed image
     drawTransformedImage();
@@ -129,15 +135,22 @@ function draw() {
     
     // Display current image state
     let imageState = "Default Image";
+    let stateColor = [0, 0, 150]; // Blue for default
+    
     if (currentImg === img2) {
       imageState = "Stretched Image (>250px)";
-      fill(0, 150, 0); // Green for stretched state
+      stateColor = [0, 150, 0]; // Green for stretched
     } else if (currentImg === img3) {
       imageState = "Compressed Image (<130px)";
-      fill(150, 0, 0); // Red for compressed state
-    } else {
-      fill(0, 0, 150); // Blue for default state
+      stateColor = [150, 0, 0]; // Red for compressed
     }
+    
+    // Add stretching lock indicator if beyond thresholds
+    if (isBeyondThresholds) {
+      imageState += " [STRETCH LOCKED]";
+    }
+    
+    fill(stateColor[0], stateColor[1], stateColor[2]);
     text("State: " + imageState, 20, 200);
     
   } else {
@@ -157,18 +170,18 @@ function draw() {
     
     // Instructions when not enough touches
     textAlign(CENTER, CENTER);
-    textSize(32);
-    fill(100, 100, 100);
+    textSize(16);
+    fill(250, 250, 250);
     text("Touch 2 points on the screen to transform", width/2, height/2 + 200);
     
     // Display threshold info
     textAlign(LEFT, TOP);
     textSize(16);
-    fill(0);
+    fill(250, 250, 250);
     text("Distance Thresholds:", 20, 20);
-    text("• < 130px: Switch to compressed image", 20, 45);
-    text("• 130-250px: Default image", 20, 70);
-    text("• > 250px: Switch to stretched image", 20, 95);
+    text("• < 130px: Switch to compressed image (stretch locked)", 20, 45);
+    text("• 130-400px: Default image (free stretching)", 20, 70);
+    text("• > 400px: Switch to stretched image (stretch locked)", 20, 95);
   }
 }
 
