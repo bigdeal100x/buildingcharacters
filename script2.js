@@ -694,4 +694,4 @@ function drawUI() {
   y += lineHeight;
   text(`  Jitter: ${(abs(jitterX) + abs(jitterY)).toFixed(2)}`, x, y);
   y += lineHeight;
-  text(`  Stress Cooldown: ${stressCooldown > 0 ? stressCooldown + ' frames' : 'None'}
+  text(`  Stress Cooldown: ${stressCooldown > 0 ? stressCooldown + ' frames' : 'None'})
