@@ -35,6 +35,12 @@ const STRESS_WARNING_THRESHOLD = 40;
 const SHAKE_DECAY = 0.92;
 const STRESS_VISUAL_INERTIA = 0.12;
 
+// Touch Destination System
+let userTargetX = null;
+let userTargetY = null;
+let stayAtTargetTimer = 0;
+const STAY_DURATION = 600; // 10 seconds at 60fps (60 * 10 = 600 frames)
+
 // ==============================================
 // STRETCHING VARIABLES
 // ==============================================
@@ -75,6 +81,7 @@ function preload() {
   characterImages.stressed = loadImage('sasha-crumple.png');
   characterImages.stretched = loadImage('sasha-front-ripped.png');
   characterImages.compressed = loadImage('sasha-rolled.png');
+  
 }
 
 // ==============================================
@@ -144,6 +151,9 @@ function draw() {
   // Draw the transformed character
   drawTransformedCharacter();
   
+// Draw destination indicator (ADD THIS LINE)
+drawDestinationIndicator();
+
   // Draw UI
   drawUI();
 }
@@ -339,40 +349,55 @@ function updateMovementSpeed() {
 }
 
 function moveCharacterToTarget() {
-  // Check if character is stretched or compressed - if so, stop movement
   let isStretchedOrCompressed = (stretchFactor > 1.2 || stretchFactor < 0.8);
   
   if (!isStressed && !isStretchedOrCompressed) {
     let distance = dist(character.x, character.y, targetX, targetY);
-    let oldDirection = characterDirection;
     
     // Wall collision detection
-    let margin = 30; // Distance from edge to consider as "hitting" the wall
-    
-    // Check left wall
+    let margin = 30;
     if (character.x <= margin) {
-      characterDirection = 1; // Flip to right when hitting left wall
-      character.x = margin + 1; // Push back inside
-    }
-    // Check right wall  
-    else if (character.x >= width - margin) {
-      characterDirection = -1; // Flip to left when hitting right wall
-      character.x = width - margin - 1; // Push back inside
+      characterDirection = 1;
+      character.x = margin + 1;
+    } else if (character.x >= width - margin) {
+      characterDirection = -1;
+      character.x = width - margin - 1;
     }
     
-    if (distance > 10) {
-      character.moveTo(targetX, targetY, currentSpeed);
+    // Check if we're going to user destination or autonomous target
+    let currentTargetX = targetX;
+    let currentTargetY = targetY;
+    
+    if (userTargetX !== null && stayAtTargetTimer > 0) {
+      // Go to user's destination
+      currentTargetX = userTargetX;
+      currentTargetY = userTargetY;
+    }
+    
+    let distanceToCurrentTarget = dist(character.x, character.y, currentTargetX, currentTargetY);
+    
+    if (distanceToCurrentTarget > 10) {
+      character.moveTo(currentTargetX, currentTargetY, currentSpeed);
       if (jitterX !== 0 || jitterY !== 0) {
         character.x += jitterX;
         character.y += jitterY;
       }
     } else {
-      chooseNewWanderTarget();
+      // Reached target
+      if (userTargetX !== null && stayAtTargetTimer > 0) {
+        // At user destination - count down timer
+        stayAtTargetTimer--;
+        if (stayAtTargetTimer <= 0) {
+          // Time's up, resume autonomous movement
+          userTargetX = null;
+          userTargetY = null;
+          chooseNewWanderTarget();
+        }
+      } else {
+        // At autonomous target - choose new one
+        chooseNewWanderTarget();
+      }
     }
-  }
-  // If stretched/compressed, stop movement but keep the character at current position
-  else if (isStretchedOrCompressed) {
-    // Movement is paused - character stays in place while being stretched/compressed
   }
 }
 
@@ -482,6 +507,17 @@ function drawCharacterUI() {
   text(`Speed: ${currentSpeed.toFixed(2)}x`, x, y);
   y += lineHeight;
   text(`Stretch: ${stretchFactor.toFixed(2)}x`, x, y);
+
+  // Add destination info
+if (userTargetX !== null) {
+  text(`User Destination: Active`, x, y);
+  y += lineHeight;
+  text(`Stay Time: ${ceil(stayAtTargetTimer / 60)}s`, x, y);
+  y += lineHeight;
+} else {
+  text(`User Destination: None`, x, y);
+  y += lineHeight;
+}
   
   pop();
 }
@@ -529,6 +565,34 @@ function drawShakeIndicator() {
   pop();
 }
 
+function drawDestinationIndicator() {
+  if (userTargetX !== null && stayAtTargetTimer > 0) {
+    push();
+    
+    // Draw pulsing circle at destination
+    let pulseSize = 20 + sin(frameCount * 0.1) * 5;
+    noFill();
+    stroke(0, 255, 0); // Green color for user destination
+    strokeWeight(2);
+    circle(userTargetX, userTargetY, pulseSize);
+    
+    // Draw crosshair
+    line(userTargetX - 10, userTargetY, userTargetX + 10, userTargetY);
+    line(userTargetX, userTargetY - 10, userTargetX, userTargetY + 10);
+    
+    // Draw timer circle
+    let progress = 1 - (stayAtTargetTimer / STAY_DURATION);
+    let angle = progress * TWO_PI;
+    
+    stroke(0, 200, 0);
+    strokeWeight(3);
+    noFill();
+    arc(userTargetX, userTargetY, 30, 30, -HALF_PI, angle - HALF_PI);
+    
+    pop();
+  }
+}
+
 // ==============================================
 // INPUT HANDLING
 // ==============================================
@@ -540,10 +604,20 @@ function keyPressed() {
 }
 
 function mousePressed() {
+  // Set user destination on click/touch
+  userTargetX = mouseX;
+  userTargetY = mouseY;
+  stayAtTargetTimer = STAY_DURATION; // Start the stay timer
   return false;
 }
 
 function touchStarted() {
+  if (touches.length > 0) {
+    // Set user destination on touch
+    userTargetX = touches[0].x;
+    userTargetY = touches[0].y;
+    stayAtTargetTimer = STAY_DURATION; // Start the stay timer
+  }
   return false;
 }
 
