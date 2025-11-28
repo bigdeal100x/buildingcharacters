@@ -89,10 +89,28 @@ function preload() {
 // ==============================================
 function setup() {
   createCanvas(windowWidth, windowHeight);
+  
+  // Lock mobile gestures to prevent scrolling, zooming, etc.
   lockGestures();
   
-  // Enable device motion sensors with tap
-  enableGyroTap('Tap to enable shake detection');
+  // Additional touch prevention
+  document.addEventListener('touchstart', function(e) {
+    if (e.target === canvas) {
+      e.preventDefault();
+    }
+  }, { passive: false });
+  
+  document.addEventListener('touchmove', function(e) {
+    if (e.target === canvas) {
+      e.preventDefault();
+    }
+  }, { passive: false });
+  
+  document.addEventListener('touchend', function(e) {
+    if (e.target === canvas) {
+      e.preventDefault();
+    }
+  }, { passive: false });
   
   // Set text properties
   textAlign(CENTER, CENTER);
@@ -663,12 +681,23 @@ function mousePressed() {
 }
 
 function touchStarted() {
+  // Prevent default touch behavior (text selection, long-press menu, etc.)
   if (touches.length > 0) {
-    // Set user destination on touch - ALWAYS works, even during wait period
+    // Set user destination on touch
     userTargetX = touches[0].x;
     userTargetY = touches[0].y;
-    stayAtTargetTimer = STAY_DURATION; // Reset the stay timer to 10 seconds
+    stayAtTargetTimer = STAY_DURATION;
   }
+  return false; // Prevent default behavior
+}
+
+function touchMoved() {
+  // Prevent scrolling and other touch gestures
+  return false;
+}
+
+function touchEnded() {
+  // Prevent any default touch end behavior
   return false;
 }
 
