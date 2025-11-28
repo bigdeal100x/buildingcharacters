@@ -95,6 +95,8 @@ function setup() {
   
 enableGyroTap('Tap to enable shake detection');
 
+debug = false;
+
   // Additional touch prevention
   document.addEventListener('touchstart', function(e) {
     if (e.target === canvas) {
