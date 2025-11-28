@@ -146,9 +146,9 @@ function draw() {
   sensorsActive = window.sensorsEnabled || false;
   
   // Update all systems
-  updateShakeIntensity();
-  updateStressParameter();
-  updateStressState();
+  updateShakeIntensity();        // ← SHAKE SYSTEM
+  updateStressParameter();       // ← STRESS SYSTEM
+  updateStressState();           // ← STRESS SYSTEM
   updateStretching();
   
   // Update character movement and appearance
@@ -162,16 +162,15 @@ function draw() {
     character.y += jitterY;
   }
   
-//   updateCharacterColor();
-  updateStressJitter();
+  updateStressJitter();          // ← STRESS SYSTEM
   updateCharacterAppearance();
   
   // Draw the transformed character
   drawTransformedCharacter();
   
-// Draw destination indicator (ADD THIS LINE)
-drawDestinationIndicator();
-
+  // Draw destination indicator
+  drawDestinationIndicator();
+  
   // Draw UI
   drawUI();
 }
@@ -681,7 +680,7 @@ function mousePressed() {
 }
 
 function touchStarted() {
-  // Prevent default touch behavior (text selection, long-press menu, etc.)
+  // Prevent default touch behavior
   if (touches.length > 0) {
     // Set user destination on touch
     userTargetX = touches[0].x;
