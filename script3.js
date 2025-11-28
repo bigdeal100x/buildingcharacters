@@ -162,10 +162,10 @@ drawDestinationIndicator();
 // STRETCHING SYSTEM
 // ==============================================
 function updateStretching() {
-  // Check if we have at least 2 touches
-  if (touches.length >= 2) {
+  // Check if we have at least 2 touches AND both are on the character
+  if (touches.length >= 2 && areBothTouchesOnCharacter()) {
     if (!hasTwoTouches) {
-      // First time we have two touches - store initial values
+      // First time we have two touches on character - store initial values
       initialDistance = dist(touches[0].x, touches[0].y, touches[1].x, touches[1].y);
       initialAngle = atan2(touches[1].y - touches[0].y, touches[1].x - touches[0].x);
       initialMidX = (touches[0].x + touches[1].x) / 2;
@@ -203,7 +203,7 @@ function updateStretching() {
   } else {
     hasTwoTouches = false;
     
-    // Reset transformations when not touching
+    // Reset transformations when not touching character with two fingers
     stretchFactor = 1;
     rotationAngle = 0;
     translateX = 0;
@@ -351,7 +351,10 @@ function updateMovementSpeed() {
 function moveCharacterToTarget() {
   let isStretchedOrCompressed = (stretchFactor > 1.2 || stretchFactor < 0.8);
   
-  if (!isStressed && !isStretchedOrCompressed) {
+  // Allow movement if not stressed AND not stretched/compressed AND not two-finger touching character
+  let isTwoFingerTouchingCharacter = (touches.length >= 2 && areBothTouchesOnCharacter());
+  
+  if (!isStressed && !isStretchedOrCompressed && !isTwoFingerTouchingCharacter) {
     let distance = dist(character.x, character.y, targetX, targetY);
     
     // Wall collision detection
@@ -414,8 +417,10 @@ function drawUI() {
 }
 
 function drawStretchUI() {
-  // Only show stretch UI when actively touching
+  // Only show stretch UI when actively touching character with two fingers
   if (touches.length >= 2) {
+    let bothOnCharacter = areBothTouchesOnCharacter();
+    
     push();
     textAlign(LEFT, TOP);
     textSize(14);
@@ -433,6 +438,16 @@ function drawStretchUI() {
     text("Rotation: " + degrees(rotationAngle).toFixed(1) + "°", 20, yPos);
     yPos += 20;
     text("Translation: (" + Math.round(translateX) + ", " + Math.round(translateY) + ")", 20, yPos);
+    yPos += 25;
+    
+    // Display touch status
+    if (bothOnCharacter) {
+      fill(100, 255, 100); // Green - touches on character
+      text("Touch Status: ON CHARACTER ✓", 20, yPos);
+    } else {
+      fill(255, 100, 100); // Red - touches not on character
+      text("Touch Status: NOT ON CHARACTER ✗", 20, yPos);
+    }
     yPos += 25;
     
     // Display current character state
@@ -465,8 +480,9 @@ function drawStretchUI() {
     textAlign(CENTER, CENTER);
     textSize(16);
     fill(250, 250, 250);
-    text("Touch 2 points to stretch character", width/2, height - 100);
-    text("Shake device to stress character", width/2, height - 70);
+    text("Touch 2 points ON CHARACTER to stretch", width/2, height - 100);
+    text("Single touch anywhere to move character", width/2, height - 70);
+    text("Shake device to stress character", width/2, height - 40);
     pop();
   }
 }
@@ -591,6 +607,41 @@ function drawDestinationIndicator() {
     
     pop();
   }
+}
+
+function isTouchOnCharacter(touchX, touchY) {
+  // Calculate character bounds in screen space (considering transformations)
+  let charWidth = baseWidth * stretchFactor;
+  let charHeight = baseHeight;
+  let charX = character.x + translateX;
+  let charY = character.y + translateY;
+  
+  // Create a rotated rectangle for more accurate detection
+  let halfWidth = charWidth / 2;
+  let halfHeight = charHeight / 2;
+  
+  // Transform touch point to character's local space
+  let localX = touchX - charX;
+  let localY = touchY - charY;
+  
+  // Rotate point back by negative rotation angle
+  let cosAngle = cos(-rotationAngle);
+  let sinAngle = sin(-rotationAngle);
+  let rotatedX = localX * cosAngle - localY * sinAngle;
+  let rotatedY = localX * sinAngle + localY * cosAngle;
+  
+  // Check if rotated point is within character bounds
+  return abs(rotatedX) <= halfWidth && abs(rotatedY) <= halfHeight;
+}
+
+function areBothTouchesOnCharacter() {
+  if (touches.length < 2) return false;
+  
+  // Check if both touches are on the character
+  let touch1OnChar = isTouchOnCharacter(touches[0].x, touches[0].y);
+  let touch2OnChar = isTouchOnCharacter(touches[1].x, touches[1].y);
+  
+  return touch1OnChar && touch2OnChar;
 }
 
 // ==============================================
