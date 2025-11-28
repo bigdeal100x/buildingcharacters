@@ -93,6 +93,8 @@ function setup() {
   // Lock mobile gestures to prevent scrolling, zooming, etc.
   lockGestures();
   
+enableGyroTap('Tap to enable shake detection');
+
   // Additional touch prevention
   document.addEventListener('touchstart', function(e) {
     if (e.target === canvas) {
