@@ -339,18 +339,25 @@ function updateMovementSpeed() {
 }
 
 function moveCharacterToTarget() {
-  if (!isStressed) {
+  // Check if character is stretched or compressed - if so, stop movement
+  let isStretchedOrCompressed = (stretchFactor > 1.2 || stretchFactor < 0.8);
+  
+  if (!isStressed && !isStretchedOrCompressed) {
     let distance = dist(character.x, character.y, targetX, targetY);
     let oldDirection = characterDirection;
     
-    if (targetX > character.x) {
-      characterDirection = 1;
-    } else if (targetX < character.x) {
-      characterDirection = -1;
-    }
+    // Wall collision detection
+    let margin = 30; // Distance from edge to consider as "hitting" the wall
     
-    if (oldDirection !== characterDirection) {
-      // Direction change handled in updateCharacterAppearance
+    // Check left wall
+    if (character.x <= margin) {
+      characterDirection = 1; // Flip to right when hitting left wall
+      character.x = margin + 1; // Push back inside
+    }
+    // Check right wall  
+    else if (character.x >= width - margin) {
+      characterDirection = -1; // Flip to left when hitting right wall
+      character.x = width - margin - 1; // Push back inside
     }
     
     if (distance > 10) {
@@ -362,6 +369,10 @@ function moveCharacterToTarget() {
     } else {
       chooseNewWanderTarget();
     }
+  }
+  // If stretched/compressed, stop movement but keep the character at current position
+  else if (isStretchedOrCompressed) {
+    // Movement is paused - character stays in place while being stretched/compressed
   }
 }
 
@@ -402,20 +413,26 @@ function drawStretchUI() {
     // Display current character state
     let charState = "Normal";
     let stateColor = [100, 100, 255];
+    let movementState = "Moving";
     
     if (isStressed) {
       charState = "Stressed";
       stateColor = [255, 100, 100];
+      movementState = "Paused";
     } else if (stretchFactor > 1.2) {
       charState = "Stretched";
       stateColor = [100, 255, 100];
+      movementState = "Paused (Stretching)";
     } else if (stretchFactor < 0.8) {
       charState = "Compressed";
       stateColor = [255, 200, 100];
+      movementState = "Paused (Compressing)";
     }
     
     fill(stateColor[0], stateColor[1], stateColor[2]);
     text("Character: " + charState, 20, yPos);
+    yPos += 20;
+    text("Movement: " + movementState, 20, yPos);
     pop();
   } else {
     // Show instructions when not touching
@@ -437,7 +454,7 @@ function drawCharacterUI() {
   
   fill(0, 0, 0, 180);
   noStroke();
-  rect(x - 10, y - 10, 190, 120, 5);
+  rect(x - 10, y - 10, 190, 140, 5);
   
   fill(255, 200, 0);
   textAlign(LEFT, TOP);
@@ -449,7 +466,16 @@ function drawCharacterUI() {
   textSize(12);
   text(`Stress: ${isStressed ? 'STRESSED 😫' : 'Normal 😌'}`, x, y);
   y += lineHeight;
-  text(`Movement: ${isStressed ? 'PAUSED' : 'Wandering'}`, x, y);
+  
+  // Show movement state based on stretching
+  let movementText = "Wandering";
+  if (isStressed) {
+    movementText = "PAUSED (Stress)";
+  } else if (stretchFactor > 1.2 || stretchFactor < 0.8) {
+    movementText = "PAUSED (Stretching)";
+  }
+  
+  text(`Movement: ${movementText}`, x, y);
   y += lineHeight;
   text(`Direction: ${characterDirection === 1 ? 'Right →' : 'Left ←'}`, x, y);
   y += lineHeight;
