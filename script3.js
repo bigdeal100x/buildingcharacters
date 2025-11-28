@@ -572,7 +572,7 @@ function drawDestinationIndicator() {
     // Draw pulsing circle at destination
     let pulseSize = 20 + sin(frameCount * 0.1) * 5;
     noFill();
-    stroke(0, 255, 0); // Green color for user destination
+    stroke(255, 255, 255); // Green color for user destination
     strokeWeight(2);
     circle(userTargetX, userTargetY, pulseSize);
     
@@ -604,19 +604,19 @@ function keyPressed() {
 }
 
 function mousePressed() {
-  // Set user destination on click/touch
+  // Set user destination on click/touch - ALWAYS works, even during wait period
   userTargetX = mouseX;
   userTargetY = mouseY;
-  stayAtTargetTimer = STAY_DURATION; // Start the stay timer
+  stayAtTargetTimer = STAY_DURATION; // Reset the stay timer to 10 seconds
   return false;
 }
 
 function touchStarted() {
   if (touches.length > 0) {
-    // Set user destination on touch
+    // Set user destination on touch - ALWAYS works, even during wait period
     userTargetX = touches[0].x;
     userTargetY = touches[0].y;
-    stayAtTargetTimer = STAY_DURATION; // Start the stay timer
+    stayAtTargetTimer = STAY_DURATION; // Reset the stay timer to 10 seconds
   }
   return false;
 }
