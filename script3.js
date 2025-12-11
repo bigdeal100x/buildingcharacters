@@ -89,31 +89,22 @@ function preload() {
 function setup() {
   createCanvas(windowWidth, windowHeight);
   
+  // FIX: Get correct touch coordinates on mobile
+  let canvasElement = document.querySelector('canvas');
+  canvasElement.style.touchAction = 'none'; // Prevent browser touch gestures
+  
   // Lock mobile gestures to prevent scrolling, zooming, etc.
   lockGestures();
   
-enableGyroTap('Tap to enable shake detection');
+  enableGyroTap('Tap to enable shake detection');
+  debug = false;
 
-debug = false;
-
-  // Additional touch prevention
-  document.addEventListener('touchstart', function(e) {
-    if (e.target === canvas) {
+  // Additional touch prevention - MORE COMPREHENSIVE
+  ['touchstart', 'touchmove', 'touchend', 'touchcancel'].forEach(event => {
+    canvasElement.addEventListener(event, function(e) {
       e.preventDefault();
-    }
-  }, { passive: false });
-  
-  document.addEventListener('touchmove', function(e) {
-    if (e.target === canvas) {
-      e.preventDefault();
-    }
-  }, { passive: false });
-  
-  document.addEventListener('touchend', function(e) {
-    if (e.target === canvas) {
-      e.preventDefault();
-    }
-  }, { passive: false });
+    }, { passive: false });
+  });
   
   // Set text properties
   textAlign(CENTER, CENTER);
@@ -171,55 +162,79 @@ function draw() {
   // Draw the transformed character
   drawTransformedCharacter();
   
-  
+ // DEBUG: Log touch status
+  if (frameCount % 60 === 0) { // Log once per second
+    console.log("Touches:", touches.length);
+    console.log("User target:", userTargetX, userTargetY);
+    console.log("Character pos:", character.x, character.y);
+  }
+
+  // Destination indicator and UI are now removed
+  // drawDestinationIndicator();
+  // drawUI();
 }
 
 // ==============================================
 // STRETCHING SYSTEM
 // ==============================================
 function updateStretching() {
-  // Check if we have at least 2 touches AND both are on the character
-  if (touches.length >= 2 && areBothTouchesOnCharacter()) {
-    if (!hasTwoTouches) {
-      // First time we have two touches on character - store initial values
-      initialDistance = dist(touches[0].x, touches[0].y, touches[1].x, touches[1].y);
-      initialAngle = atan2(touches[1].y - touches[0].y, touches[1].x - touches[0].x);
-      initialMidX = (touches[0].x + touches[1].x) / 2;
-      initialMidY = (touches[0].y + touches[1].y) / 2;
-      hasTwoTouches = true;
-    }
+  // FIX: Check touches array more carefully
+  if (touches && touches.length >= 2) {
+    // For mobile, ensure we have valid touch positions
+    let touch1 = touches[0];
+    let touch2 = touches[1];
     
-    // Get the positions of the first 2 touches
-    touch1X = touches[0].x;
-    touch1Y = touches[0].y;
-    touch2X = touches[1].x;
-    touch2Y = touches[1].y;
+    if (!touch1 || !touch2) return;
     
-    // Calculate distance between the two touches
-    touchDistance = dist(touch1X, touch1Y, touch2X, touch2Y);
-    
-    // Calculate current midpoint
-    let currentMidX = (touch1X + touch2X) / 2;
-    let currentMidY = (touch1Y + touch2Y) / 2;
-    
-    // Calculate transformations
-    rotationAngle = atan2(touch2Y - touch1Y, touch2X - touch1X) - initialAngle;
-    translateX = currentMidX - initialMidX;
-    translateY = currentMidY - initialMidY;
-    
-    // Check distance thresholds and control stretching
-    if (touchDistance > MAX_DISTANCE_THRESHOLD) {
-      stretchFactor = MAX_DISTANCE_THRESHOLD / initialDistance;
-    } else if (touchDistance < MIN_DISTANCE_THRESHOLD) {
-      stretchFactor = MIN_DISTANCE_THRESHOLD / initialDistance;
+    // Check if both are on character
+    if (areBothTouchesOnCharacter()) {
+      if (!hasTwoTouches) {
+        // First time we have two touches on character
+        initialDistance = dist(touch1.x, touch1.y, touch2.x, touch2.y);
+        initialAngle = atan2(touch2.y - touch1.y, touch2.x - touch1.x);
+        initialMidX = (touch1.x + touch2.x) / 2;
+        initialMidY = (touch1.y + touch2.y) / 2;
+        hasTwoTouches = true;
+        
+        console.log("Stretching started"); // Debug log
+      }
+      
+      // Get current positions
+      touch1X = touch1.x;
+      touch1Y = touch1.y;
+      touch2X = touch2.x;
+      touch2Y = touch2.y;
+      
+      // Rest of your stretching logic...
+      touchDistance = dist(touch1X, touch1Y, touch2X, touch2Y);
+      
+      // Calculate current midpoint
+      let currentMidX = (touch1X + touch2X) / 2;
+      let currentMidY = (touch1Y + touch2Y) / 2;
+      
+      // Calculate transformations
+      rotationAngle = atan2(touch2Y - touch1Y, touch2X - touch1X) - initialAngle;
+      translateX = currentMidX - initialMidX;
+      translateY = currentMidY - initialMidY;
+      
+      // Check distance thresholds
+      if (touchDistance > MAX_DISTANCE_THRESHOLD) {
+        stretchFactor = MAX_DISTANCE_THRESHOLD / initialDistance;
+      } else if (touchDistance < MIN_DISTANCE_THRESHOLD) {
+        stretchFactor = MIN_DISTANCE_THRESHOLD / initialDistance;
+      } else {
+        stretchFactor = touchDistance / initialDistance;
+      }
+      
     } else {
-      stretchFactor = touchDistance / initialDistance;
+      // Touches not on character - reset
+      hasTwoTouches = false;
     }
-    
   } else {
+    // Not enough touches or none
     hasTwoTouches = false;
     
-    // Reset transformations when not touching character with two fingers
+    // Reset transformations
     stretchFactor = 1;
     rotationAngle = 0;
     translateX = 0;
@@ -275,6 +290,15 @@ function drawTransformedCharacter() {
 // ==============================================
 // CHARACTER CONTROLLER FUNCTIONS
 // ==============================================
+function getTouchPos(touchEvent) {
+  // Convert touch position to canvas coordinates
+  let canvasBounds = canvas.getBoundingClientRect();
+  return {
+    x: touchEvent.touches[0].clientX - canvasBounds.left,
+    y: touchEvent.touches[0].clientY - canvasBounds.top
+  };
+}
+
 function deviceShaken() {
   if (window.sensorsEnabled) {
     shakeIntensity += 1.0;
@@ -612,6 +636,7 @@ function areBothTouchesOnCharacter() {
 //   }
 // }
 
+
 function mousePressed() {
   // Set user destination on click/touch - ALWAYS works, even during wait period
   userTargetX = mouseX;
@@ -621,26 +646,36 @@ function mousePressed() {
 }
 
 function touchStarted() {
-  // Prevent default touch behavior
-  if (touches.length > 0) {
-    // Set user destination on touch
-    userTargetX = touches[0].x;
-    userTargetY = touches[0].y;
-    stayAtTargetTimer = STAY_DURATION;
-  }
-  return false; // Prevent default behavior
+  // FIX: Use mouseX/mouseY instead of touches[0] for better compatibility
+  userTargetX = mouseX;
+  userTargetY = mouseY;
+  stayAtTargetTimer = STAY_DURATION;
+  
+  console.log("Touch started at:", mouseX, mouseY); // Debug log
+  
+  // Prevent default behavior
+  return false;
 }
 
 function touchMoved() {
-  // Prevent scrolling and other touch gestures
+  // Update stretching even while moving touches
+  // This helps with smoother stretching
   return false;
 }
 
 function touchEnded() {
-  // Prevent any default touch end behavior
+  // Handle when touches end
   return false;
 }
 
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
+  
+  // FIX: Update canvas style for mobile
+  let canvasElement = document.querySelector('canvas');
+  canvasElement.style.width = windowWidth + 'px';
+  canvasElement.style.height = windowHeight + 'px';
+  canvasElement.style.position = 'fixed';
+  canvasElement.style.top = '0';
+  canvasElement.style.left = '0';
 }
