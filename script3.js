@@ -176,16 +176,21 @@ function updateCharacterAppearance() {
 // DRAW CHARACTER
 // ==============================================
 function drawTransformedCharacter() {
-  let charWidth = baseWidth * stretchFactor;
-  let charHeight = baseHeight;
+  let img = currentCharacterImg;
+
+  let scaledW = baseWidth * stretchFactor; // stretch ONLY horizontally
+  let scaledH = baseHeight;                // height stays fixed forever
 
   push();
   translate(character.x + translateX, character.y + translateY);
   rotate(rotationAngle);
   imageMode(CENTER);
-  image(currentCharacterImg, 0, -200, charWidth, charHeight/2);
+
+  image(img, 0, -200, scaledW, scaledH/2);
   pop();
 }
+
+
 
 // ==============================================
 // SHAKE + STRESS SYSTEM
