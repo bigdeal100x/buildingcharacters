@@ -68,7 +68,6 @@ const MIN_DISTANCE_THRESHOLD = 130;
 const MAX_DISTANCE_THRESHOLD = 400;
 
 // UI
-let showUI = true;
 let sensorsActive = false;
 
 // ==============================================
@@ -172,11 +171,7 @@ function draw() {
   // Draw the transformed character
   drawTransformedCharacter();
   
-  // Draw destination indicator
-  drawDestinationIndicator();
   
-  // Draw UI
-  drawUI();
 }
 
 // ==============================================
@@ -428,207 +423,149 @@ function moveCharacterToTarget() {
 // ==============================================
 // UI FUNCTIONS
 // ==============================================
-function drawUI() {
-  if (!showUI) return;
+// function drawUI() {
+//   if (!showUI) return;
   
-  drawStressBar();
-  drawShakeIndicator();
-  drawStretchUI();
-  drawCharacterUI();
-}
+  // drawStressBar();
+  // drawShakeIndicator();
+  // drawStretchUI();
+  // drawCharacterUI();
+// }
 
-function drawStretchUI() {
-  // Only show stretch UI when actively touching character with two fingers
-  if (touches.length >= 2) {
-    let bothOnCharacter = areBothTouchesOnCharacter();
-    
-    push();
-    textAlign(LEFT, TOP);
-    textSize(14);
-    fill(255);
-    
-    let yPos = 120;
-    text("Touch 1: (" + Math.round(touch1X) + ", " + Math.round(touch1Y) + ")", 20, yPos);
-    yPos += 20;
-    text("Touch 2: (" + Math.round(touch2X) + ", " + Math.round(touch2Y) + ")", 20, yPos);
-    yPos += 20;
-    text("Distance: " + Math.round(touchDistance) + " pixels", 20, yPos);
-    yPos += 20;
-    text("Stretch: " + stretchFactor.toFixed(2) + "x", 20, yPos);
-    yPos += 20;
-    text("Rotation: " + degrees(rotationAngle).toFixed(1) + "°", 20, yPos);
-    yPos += 20;
-    text("Translation: (" + Math.round(translateX) + ", " + Math.round(translateY) + ")", 20, yPos);
-    yPos += 25;
-    
-    // Display touch status
-    if (bothOnCharacter) {
-      fill(100, 255, 100); // Green - touches on character
-      text("Touch Status: ON CHARACTER ✓", 20, yPos);
-    } else {
-      fill(255, 100, 100); // Red - touches not on character
-      text("Touch Status: NOT ON CHARACTER ✗", 20, yPos);
-    }
-    yPos += 25;
-    
-    // Display current character state
-    let charState = "Normal";
-    let stateColor = [100, 100, 255];
-    let movementState = "Moving";
-    
-    if (isStressed) {
-      charState = "Stressed";
-      stateColor = [255, 100, 100];
-      movementState = "Paused";
-    } else if (stretchFactor > 1.2) {
-      charState = "Stretched";
-      stateColor = [100, 255, 100];
-      movementState = "Paused (Stretching)";
-    } else if (stretchFactor < 0.8) {
-      charState = "Compressed";
-      stateColor = [255, 200, 100];
-      movementState = "Paused (Compressing)";
-    }
-    
-    fill(stateColor[0], stateColor[1], stateColor[2]);
-    text("Character: " + charState, 20, yPos);
-    yPos += 20;
-    text("Movement: " + movementState, 20, yPos);
-    pop();
-  } else {
-    // Show instructions when not touching
-    push();
-    textAlign(CENTER, CENTER);
-    textSize(16);
-    fill(250, 250, 250);
-    text("Touch 2 points ON CHARACTER to stretch", width/2, height - 100);
-    text("Single touch anywhere to move character", width/2, height - 70);
-    text("Shake device to stress character", width/2, height - 40);
-    pop();
-  }
-}
+// function drawStretchUI() {
+//     // Show instructions when not touching
+//     push();
+//     textAlign(CENTER, CENTER);
+//     textSize(16);
+//     fill(250, 250, 250);
+//     text("Touch 2 points ON CHARACTER to stretch", width/2, height - 100);
+//     text("Single touch anywhere to move character", width/2, height - 70);
+//     text("Shake device to stress character", width/2, height - 40);
+//     pop();
+//   }
+// }
 
-function drawCharacterUI() {
-  push();
-  let x = width - 200;
-  let y = 120;
-  let lineHeight = 18;
+// function drawCharacterUI() {
+//   push();
+//   let x = width - 200;
+//   let y = 120;
+//   let lineHeight = 18;
   
-  fill(0, 0, 0, 180);
-  noStroke();
-  rect(x - 10, y - 10, 190, 140, 5);
+//   fill(0, 0, 0, 180);
+//   noStroke();
+//   rect(x - 10, y - 10, 190, 140, 5);
   
-  fill(255, 200, 0);
-  textAlign(LEFT, TOP);
-  textSize(14);
-  text('CHARACTER STATE', x, y);
-  y += lineHeight * 1.5;
+//   fill(255, 200, 0);
+//   textAlign(LEFT, TOP);
+//   textSize(14);
+//   text('CHARACTER STATE', x, y);
+//   y += lineHeight * 1.5;
   
-  fill(255);
-  textSize(12);
-  text(`Stress: ${isStressed ? 'STRESSED 😫' : 'Normal 😌'}`, x, y);
-  y += lineHeight;
+//   fill(255);
+//   textSize(12);
+//   text(`Stress: ${isStressed ? 'STRESSED 😫' : 'Normal 😌'}`, x, y);
+//   y += lineHeight;
   
-  // Show movement state based on stretching
-  let movementText = "Wandering";
-  if (isStressed) {
-    movementText = "PAUSED (Stress)";
-  } else if (stretchFactor > 1.2 || stretchFactor < 0.8) {
-    movementText = "PAUSED (Stretching)";
-  }
+//   // Show movement state based on stretching
+//   let movementText = "Wandering";
+//   if (isStressed) {
+//     movementText = "PAUSED (Stress)";
+//   } else if (stretchFactor > 1.2 || stretchFactor < 0.8) {
+//     movementText = "PAUSED (Stretching)";
+//   }
   
-  text(`Movement: ${movementText}`, x, y);
-  y += lineHeight;
-  text(`Direction: ${characterDirection === 1 ? 'Right →' : 'Left ←'}`, x, y);
-  y += lineHeight;
-  text(`Speed: ${currentSpeed.toFixed(2)}x`, x, y);
-  y += lineHeight;
-  text(`Stretch: ${stretchFactor.toFixed(2)}x`, x, y);
+//   text(`Movement: ${movementText}`, x, y);
+//   y += lineHeight;
+//   text(`Direction: ${characterDirection === 1 ? 'Right →' : 'Left ←'}`, x, y);
+//   y += lineHeight;
+//   text(`Speed: ${currentSpeed.toFixed(2)}x`, x, y);
+//   y += lineHeight;
+//   text(`Stretch: ${stretchFactor.toFixed(2)}x`, x, y);
 
-  // Add destination info
-if (userTargetX !== null) {
-  text(`User Destination: Active`, x, y);
-  y += lineHeight;
-  text(`Stay Time: ${ceil(stayAtTargetTimer / 60)}s`, x, y);
-  y += lineHeight;
-} else {
-  text(`User Destination: None`, x, y);
-  y += lineHeight;
-}
+//   // Add destination info
+// if (userTargetX !== null) {
+//   text(`User Destination: Active`, x, y);
+//   y += lineHeight;
+//   text(`Stay Time: ${ceil(stayAtTargetTimer / 60)}s`, x, y);
+//   y += lineHeight;
+// } else {
+//   text(`User Destination: None`, x, y);
+//   y += lineHeight;
+// }
   
-  pop();
-}
+//   pop();
+// }
 
-function drawStressBar() {
-  push();
-  noStroke();
-  fill(50, 50, 60);
-  rect(20, 20, width - 40, 30, 5);
+// function drawStressBar() {
+//   push();
+//   noStroke();
+//   fill(50, 50, 60);
+//   rect(20, 20, width - 40, 30, 5);
   
-  let barWidth = map(displayStress, 0, 100, 0, width - 40);
-  let r = map(displayStress, 0, 100, 100, 255);
-  let g = map(displayStress, 0, 100, 255, 50);
-  fill(r, g, 100);
-  rect(20, 20, barWidth, 30, 5);
+//   let barWidth = map(displayStress, 0, 100, 0, width - 40);
+//   let r = map(displayStress, 0, 100, 100, 255);
+//   let g = map(displayStress, 0, 100, 255, 50);
+//   fill(r, g, 100);
+//   rect(20, 20, barWidth, 30, 5);
   
-  fill(255);
-  textAlign(CENTER, CENTER);
-  textSize(16);
-  text(`STRESS: ${floor(stress)}`, width / 2, 35);
-  pop();
-}
+//   fill(255);
+//   textAlign(CENTER, CENTER);
+//   textSize(16);
+//   text(`STRESS: ${floor(stress)}`, width / 2, 35);
+//   pop();
+// }
 
-function drawShakeIndicator() {
-  push();
-  let meterX = 20;
-  let meterY = 70;
-  let meterWidth = 150;
-  let meterHeight = 20;
+// function drawShakeIndicator() {
+//   push();
+//   let meterX = 20;
+//   let meterY = 70;
+//   let meterWidth = 150;
+//   let meterHeight = 20;
   
-  noStroke();
-  fill(40, 40, 50);
-  rect(meterX, meterY, meterWidth, meterHeight, 3);
+//   noStroke();
+//   fill(40, 40, 50);
+//   rect(meterX, meterY, meterWidth, meterHeight, 3);
   
-  let intensityWidth = map(shakeIntensity, 0, 10, 0, meterWidth);
-  fill(255, 150, 0);
-  rect(meterX, meterY, intensityWidth, meterHeight, 3);
+//   let intensityWidth = map(shakeIntensity, 0, 10, 0, meterWidth);
+//   fill(255, 150, 0);
+//   rect(meterX, meterY, intensityWidth, meterHeight, 3);
   
-  fill(255);
-  textAlign(LEFT, CENTER);
-  textSize(12);
-  text('Shake:', meterX, meterY - 10);
-  text(shakeIntensity.toFixed(2), meterX + meterWidth + 10, meterY + meterHeight / 2);
+//   fill(255);
+//   textAlign(LEFT, CENTER);
+//   textSize(12);
+//   text('Shake:', meterX, meterY - 10);
+//   text(shakeIntensity.toFixed(2), meterX + meterWidth + 10, meterY + meterHeight / 2);
   
-  pop();
-}
+//   pop();
+// }
 
-function drawDestinationIndicator() {
-  if (userTargetX !== null && stayAtTargetTimer > 0) {
-    push();
+// function drawDestinationIndicator() {
+//   if (userTargetX !== null && stayAtTargetTimer > 0) {
+//     push();
     
-    // Draw pulsing circle at destination
-    let pulseSize = 20 + sin(frameCount * 0.1) * 5;
-    noFill();
-    stroke(255, 255, 255); // Green color for user destination
-    strokeWeight(2);
-    circle(userTargetX, userTargetY, pulseSize);
+//     // Draw pulsing circle at destination
+//     let pulseSize = 20 + sin(frameCount * 0.1) * 5;
+//     noFill();
+//     stroke(255, 255, 255); // Green color for user destination
+//     strokeWeight(2);
+//     circle(userTargetX, userTargetY, pulseSize);
     
-    // Draw crosshair
-    line(userTargetX - 10, userTargetY, userTargetX + 10, userTargetY);
-    line(userTargetX, userTargetY - 10, userTargetX, userTargetY + 10);
+//     // Draw crosshair
+//     line(userTargetX - 10, userTargetY, userTargetX + 10, userTargetY);
+//     line(userTargetX, userTargetY - 10, userTargetX, userTargetY + 10);
     
-    // Draw timer circle
-    let progress = 1 - (stayAtTargetTimer / STAY_DURATION);
-    let angle = progress * TWO_PI;
+//     // Draw timer circle
+//     let progress = 1 - (stayAtTargetTimer / STAY_DURATION);
+//     let angle = progress * TWO_PI;
     
-    stroke(0, 200, 0);
-    strokeWeight(3);
-    noFill();
-    arc(userTargetX, userTargetY, 30, 30, -HALF_PI, angle - HALF_PI);
+//     stroke(0, 200, 0);
+//     strokeWeight(3);
+//     noFill();
+//     arc(userTargetX, userTargetY, 30, 30, -HALF_PI, angle - HALF_PI);
     
-    pop();
-  }
-}
+//     pop();
+//   }
+// }
 
 function isTouchOnCharacter(touchX, touchY) {
   // Calculate character bounds in screen space (considering transformations)
@@ -668,12 +605,12 @@ function areBothTouchesOnCharacter() {
 // ==============================================
 // INPUT HANDLING
 // ==============================================
-function keyPressed() {
-  if (key === ' ') {
-    showUI = !showUI;
-    return false;
-  }
-}
+// function keyPressed() {
+//   if (key === ' ') {
+//     showUI = !showUI;
+//     return false;
+//   }
+// }
 
 function mousePressed() {
   // Set user destination on click/touch - ALWAYS works, even during wait period
