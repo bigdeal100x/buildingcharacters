@@ -43,6 +43,12 @@ let initialMidX = 0;
 let initialMidY = 0;
 let hasTwoTouches = false;
 
+// SOUND VARIABLES
+let shakeSound;
+let angrySound;
+let angrySoundPlaying = false; // Track if angry sound is already playing
+let soundEnabled = true;
+
 // Distance thresholds
 const MIN_DISTANCE_THRESHOLD = 130;
 const MAX_DISTANCE_THRESHOLD = 400;
@@ -61,6 +67,8 @@ let lastAccelerationY = 0;
 let lastAccelerationZ = 0;
 let sensorsEnabled = false;
 
+
+
 // PRELOAD
 function preload() {
   characterImages.normalRight = loadImage('sasha.jpg');
@@ -69,6 +77,9 @@ function preload() {
   characterImages.stretched = loadImage('sasha-front-ripped.png');
   characterImages.compressed = loadImage('sasha-rolled.png');
   characterImages.angry = loadImage('sasha-angry.gif');
+
+  shakeSound = loadSound('sasha-crumple.mp3');
+  angrySound = loadSound('sasha-angry.mp3'); 
 }
 
 // SETUP
@@ -79,20 +90,20 @@ function setup() {
   canvasElement.style.touchAction = 'none';
   
   // Add touch event listeners
-  ['touchstart','touchmove','touchend','touchcancel'].forEach(ev => {
-    canvasElement.addEventListener(ev, e => {
-      e.preventDefault();
-      lastInteractionTime = millis();
-      
-      // Cancel idle if tapping the character
-      if (ev === 'touchstart' && touches.length > 0) {
-        let t = touches[0];
-        if (isTouchOnCharacter(t.x, t.y) && isIdleAnimation) {
-          exitIdleAnimation();
-        }
+['touchstart','touchmove','touchend','touchcancel'].forEach(ev => {
+  canvasElement.addEventListener(ev, e => {
+    e.preventDefault();
+    lastInteractionTime = millis();
+    
+    // Cancel idle if tapping the character
+    if (ev === 'touchstart' && touches.length > 0) {
+      let t = touches[0];
+      if (isTouchOnCharacter(t.x, t.y) && isIdleAnimation) {
+        exitIdleAnimation(); // This will stop the angry sound
       }
-    }, { passive: false });
-  });
+    }
+  }, { passive: false });
+});
 
   textAlign(CENTER, CENTER);
   textSize(24);
@@ -180,6 +191,21 @@ function shakeDetected() {
   stress = constrain(stress + STRESS_SHAKE_INCREASE, 0, 100);
   triggerStressedState();
   lastInteractionTime = millis();
+  
+  // PLAY SHAKE SOUND
+  if (soundEnabled && shakeSound) {
+    // Set volume based on shake intensity
+    let volume = map(min(shakeIntensity, 10), 0, 10, 0.3, 1.0);
+    shakeSound.setVolume(volume);
+    
+    // Optional: Add some randomness to pitch for variety
+    let rate = random(0.9, 1.1);
+    shakeSound.rate(rate);
+    
+    // Play sound (stop first to avoid overlapping sounds)
+    shakeSound.stop();
+    shakeSound.play();
+  }
   
   // Cancel idle if active
   if (isIdleAnimation) {
@@ -416,6 +442,14 @@ function enterIdleAnimation() {
   isStressed = true;
   stress = 100;
   stressCooldown = 999; // Keep stressed while angry
+  
+  // PLAY ANGRY SOUND
+  if (soundEnabled && angrySound && !angrySoundPlaying) {
+    angrySound.setVolume(0.7);
+    angrySound.loop(); // Loop the angry sound
+    angrySoundPlaying = true;
+    console.log("Angry sound started");
+  }
 }
 
 function exitIdleAnimation() {
@@ -427,6 +461,13 @@ function exitIdleAnimation() {
   shakeIntensity = 0;
   uniformScale = 1;
   lastInteractionTime = millis(); // Reset interaction timer
+  
+  // STOP ANGRY SOUND
+  if (angrySound && angrySoundPlaying) {
+    angrySound.stop();
+    angrySoundPlaying = false;
+    console.log("Angry sound stopped");
+  }
 }
 
 // TOUCH → CHARACTER CHECK
