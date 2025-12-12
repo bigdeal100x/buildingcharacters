@@ -1,25 +1,18 @@
 // ==============================================
 // STRETCHABLE CHARACTER WITH SHAKE EFFECTS
-// (NO MOVEMENT — CHARACTER ALWAYS CENTERED)
 // ==============================================
 
-// ==============================================
 // CHARACTER VARIABLES
-// ==============================================
 let character;
 let characterImages = {};
 let currentCharacterImg;
 let isStressed = false;
 let stressCooldown = 0;
-let characterState = 'normal'; // 'normal', 'stressed', 'stretched', 'compressed', 'angry'
 
 // Global shake and stress variables
 let shakeIntensity = 0;
 let stress = 0;
 let displayStress = 0;
-
-// No movement allowed anymore
-const BASE_WALK_SPEED = 0;
 
 // Stress parameters
 const STRESS_SHAKE_INCREASE = 8;
@@ -29,9 +22,7 @@ const STRESS_WARNING_THRESHOLD = 40;
 const SHAKE_DECAY = 0.92;
 const STRESS_VISUAL_INERTIA = 0.12;
 
-// ==============================================
 // STRETCHING VARIABLES
-// ==============================================
 let stretchFactor = 1;
 let rotationAngle = 0;
 let translateX = 0;
@@ -56,23 +47,20 @@ let hasTwoTouches = false;
 const MIN_DISTANCE_THRESHOLD = 130;
 const MAX_DISTANCE_THRESHOLD = 400;
 
-// UI
-let sensorsActive = false;
-
 // IDLE SYSTEM
 let lastInteractionTime = 0;
 let isIdleAnimation = false;
 let idleStartTime = 0;
-let previousImageBeforeIdle = null;
-let previousStressBeforeIdle = false;
+let idleTransitionTime = 0;
 
-const IDLE_DELAY = 15000;   // 15 seconds
-const IDLE_DURATION = 5000; // 5 seconds
+const IDLE_DELAY = 15000;   // 15 seconds until angry
+const IDLE_DURATION = 5000; // 5 seconds angry
+const IDLE_TRANSITION = 1000; // 1 second to transition back
 
+// Character state management
+let characterState = 'normal'; // normal, stressed, stretched, compressed, angry
 
-// ==============================================
 // PRELOAD
-// ==============================================
 function preload() {
   characterImages.normalRight = loadImage('sasha.jpg');
   characterImages.normalLeft = loadImage('sasha-back.jpg');
@@ -82,37 +70,28 @@ function preload() {
   characterImages.angry = loadImage('sasha-angry.gif');
 }
 
-// ==============================================
 // SETUP
-// ==============================================
 function setup() {
   createCanvas(windowWidth, windowHeight);
 
   let canvasElement = document.querySelector('canvas');
   canvasElement.style.touchAction = 'none';
-  lockGestures();
-  enableGyroTap('Tap to enable shake detection');
-
-  ['touchstart','touchmove','touchend','touchcancel'].forEach(ev=>{
-    canvasElement.addEventListener(ev, e=>e.preventDefault(), { passive:false });
-
-
-// In setup() function, update the event listener:
-canvasElement.addEventListener(ev, e=>{
-  e.preventDefault();
-  lastInteractionTime = millis();
   
-  // If this is a tap on the character, cancel idle immediately
-  if (touches.length > 0 && e.type === 'touchstart') {
-    let t = touches[0];
-    if (isTouchOnCharacter(t.x, t.y) && isIdleAnimation) {
-      console.log("Tapped character during idle - canceling");
-      resetIdleState();
-    }
-  }
-}, { passive:false });
-
-  
+  // Add touch event listeners
+  ['touchstart','touchmove','touchend','touchcancel'].forEach(ev => {
+    canvasElement.addEventListener(ev, e => {
+      e.preventDefault();
+      lastInteractionTime = millis();
+      
+      // Cancel idle if tapping the character
+      if (ev === 'touchstart' && touches.length > 0) {
+        let t = touches[0];
+        if (isTouchOnCharacter(t.x, t.y) && isIdleAnimation) {
+          exitIdleAnimation();
+        }
+      }
+    }, { passive: false });
+  });
 
   textAlign(CENTER, CENTER);
   textSize(24);
@@ -121,22 +100,16 @@ canvasElement.addEventListener(ev, e=>{
 }
 
 function setupCharacter() {
-  character = { x: width / 2, y: height / 2 }; // no Sprite needed
+  character = { x: width / 2, y: height / 2 };
   currentCharacterImg = characterImages.normalRight;
+  lastInteractionTime = millis();
 }
 
-// ==============================================
 // DRAW LOOP
-// ==============================================
 function draw() {
   background(0);
 
-  sensorsActive = window.sensorsEnabled || false;
-
-  // detect idle
-updateIdleSystem();
-
-
+  updateIdleSystem();
   updateShakeIntensity();
   updateStressParameter();
   updateStressState();
@@ -145,11 +118,13 @@ updateIdleSystem();
   updateCharacterAppearance();
 
   drawTransformedCharacter();
+  
+//   // Debug display
+//   fill(255);
+//   text(`State: ${characterState} | Idle: ${isIdleAnimation}`, width/2, 50);
 }
 
-// ==============================================
 // STRETCHING SYSTEM
-// ==============================================
 function updateStretching() {
   if (touches && touches.length >= 2) {
     let t1 = touches[0];
@@ -197,60 +172,62 @@ function updateStretching() {
   }
 }
 
-// ==============================================
 // IMAGE SELECTION
-// ==============================================
 function updateCharacterAppearance() {
-  // IDLE OVERRIDES ALL OTHER STATES
-  if (isIdleAnimation) {
-    characterState = 'angry';
+  // IDLE (ANGRY) STATE - highest priority
+  if (characterState === 'angry') {
     currentCharacterImg = characterImages.angry;
     return;
   }
-
-  // Update state based on conditions
+  
+  // STRETCHED STATE
+  if (stretchFactor > 1.2) {
+    characterState = 'stretched';
+    currentCharacterImg = characterImages.stretched;
+    return;
+  }
+  
+  // COMPRESSED STATE
+  if (stretchFactor < 0.8) {
+    characterState = 'compressed';
+    currentCharacterImg = characterImages.compressed;
+    return;
+  }
+  
+  // STRESSED STATE
   if (isStressed) {
     characterState = 'stressed';
     currentCharacterImg = characterImages.stressed;
-  } else if (stretchFactor > 1.2) {
-    characterState = 'stretched';
-    currentCharacterImg = characterImages.stretched;
-  } else if (stretchFactor < 0.8) {
-    characterState = 'compressed';
-    currentCharacterImg = characterImages.compressed;
-  } else {
-    characterState = 'normal';
-    currentCharacterImg = characterImages.normalRight;
+    return;
   }
+  
+  // NORMAL STATE
+  characterState = 'normal';
+  currentCharacterImg = characterImages.normalRight;
 }
 
-
-// ==============================================
 // DRAW CHARACTER
-// ==============================================
 function drawTransformedCharacter() {
   let img = currentCharacterImg;
+  if (!img) return; // Safety check
 
-  let scaledW = baseWidth * stretchFactor; // stretch ONLY horizontally
-  let scaledH = baseHeight;                // height stays fixed forever
+  let scaledW = baseWidth * stretchFactor;
+  let scaledH = baseHeight;
 
   push();
   translate(character.x + translateX, character.y + translateY);
   rotate(rotationAngle);
   scale(uniformScale);
   imageMode(CENTER);
-
-  image(img, 0, -200, scaledW*1.2, scaledH/1.8);
+  
+  // Draw character image
+  image(img, 0, -200, scaledW * 1.2, scaledH / 1.8);
+  
   pop();
 }
 
-
-
-// ==============================================
 // SHAKE + STRESS SYSTEM
-// ==============================================
 function deviceShaken() {
-  if (!window.sensorsEnabled) return;
   shakeIntensity = constrain(shakeIntensity + 1.0, 0, 10);
   stress = constrain(stress + STRESS_SHAKE_INCREASE, 0, 100);
   triggerStressedState();
@@ -258,7 +235,7 @@ function deviceShaken() {
   
   // Cancel idle if active
   if (isIdleAnimation) {
-    resetIdleState();
+    exitIdleAnimation();
   }
 }
 
@@ -270,7 +247,9 @@ function triggerStressedState() {
 function updateStressState() {
   if (isStressed) {
     stressCooldown--;
-    if (stressCooldown <= 0) isStressed = false;
+    if (stressCooldown <= 0) {
+      isStressed = false;
+    }
   }
 }
 
@@ -280,8 +259,10 @@ function updateShakeIntensity() {
 }
 
 function updateStressParameter() {
-  stress -= STRESS_RECOVERY;
-  stress = constrain(stress, 0, 100);
+  if (characterState !== 'angry') {
+    stress -= STRESS_RECOVERY;
+    stress = constrain(stress, 0, 100);
+  }
   displayStress = lerp(displayStress, stress, STRESS_VISUAL_INERTIA);
 }
 
@@ -302,61 +283,60 @@ function updateStressJitter() {
   character.y = height/2 + jitterY;
 }
 
-// ==============================================
 // IDLE SYSTEM
-// ==============================================
 function updateIdleSystem() {
   let now = millis();
   
-  // Check if user is interacting
-  let interacting = touches.length > 0 || shakeIntensity > 0.2;
+  // Check if user is interacting (touching or shaking)
+  let interacting = touches.length > 0 || shakeIntensity > 0.5;
   
-  // If interacting and not idle, reset timer
-  if (interacting && !isIdleAnimation) {
+  // If interacting and not currently in angry state, reset idle timer
+  if (interacting && characterState !== 'angry') {
     lastInteractionTime = now;
-    return;
   }
   
-  // Check for idle start
-  if (!isIdleAnimation && now - lastInteractionTime > IDLE_DELAY) {
-    console.log("Starting idle animation (angry state)");
-    isIdleAnimation = true;
-    idleStartTime = now;
-    
-    // Set angry state
+  // Check if we should ENTER idle (angry) state
+  if (!isIdleAnimation && characterState !== 'angry' && now - lastInteractionTime > IDLE_DELAY) {
+    enterIdleAnimation();
+  }
+  
+  // Check if we should EXIT idle (angry) state
+  if (isIdleAnimation && now - idleStartTime > IDLE_DURATION) {
+    exitIdleAnimation();
+  }
+  
+  // Apply idle effects if in angry state
+  if (characterState === 'angry') {
     uniformScale = 1.35;
     shakeIntensity = 4;
-    isStressed = true; // Set stressed to true so it stays in angry state
-    stress = 100; // Max stress for angry look
-    stressCooldown = 60;
-  }
-  
-  // Check for idle end
-  if (isIdleAnimation && now - idleStartTime > IDLE_DURATION) {
-    console.log("Idle animation complete, returning to normal");
-    resetIdleState();
+  } else {
+    uniformScale = 1;
   }
 }
 
-function resetIdleState() {
-  if (!isIdleAnimation) return; // Already not idle
-  
+function enterIdleAnimation() {
+  console.log("Entering idle (angry) state");
+  isIdleAnimation = true;
+  idleStartTime = millis();
+  characterState = 'angry';
+  isStressed = true;
+  stress = 100;
+  stressCooldown = 999; // Keep stressed while angry
+}
+
+function exitIdleAnimation() {
+  console.log("Exiting idle (angry) state");
   isIdleAnimation = false;
-  idleStartTime = 0;
-  uniformScale = 1;
+  characterState = 'normal';
+  isStressed = false;
+  stress = 0;
+  stressCooldown = 0;
   shakeIntensity = 0;
-  stress = 0; // Reset stress when coming out of angry state
-  displayStress = 0;
-  isStressed = false; // Make sure stressed state is cleared
-  
-  // Let the next frame naturally determine the correct state
-  console.log("Idle state reset - character should return to normal");
+  uniformScale = 1;
+  lastInteractionTime = millis(); // Reset interaction timer
 }
 
-
-// ==============================================
 // TOUCH → CHARACTER CHECK
-// ==============================================
 function isTouchOnCharacter(x, y) {
   let charWidth = baseWidth * stretchFactor;
   let charHeight = baseHeight;
@@ -381,9 +361,18 @@ function areBothTouchesOnCharacter() {
          isTouchOnCharacter(touches[1].x, touches[1].y);
 }
 
-// ==============================================
 // WINDOW RESIZE
-// ==============================================
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
+  character.x = width / 2;
+  character.y = height / 2;
+}
+
+// UI FUNCTIONS (stubs - add your actual implementations)
+function lockGestures() {
+  // Your gesture locking implementation
+}
+
+function enableGyroTap(message) {
+  // Your gyro tap implementation
 }
