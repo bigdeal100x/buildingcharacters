@@ -37,6 +37,7 @@ let translateX = 0;
 let translateY = 0;
 let baseWidth = 300;
 let baseHeight = 300;
+let uniformScale = 1;
 
 // Touch variables for stretching
 let touch1X = 0;
@@ -57,6 +58,14 @@ const MAX_DISTANCE_THRESHOLD = 400;
 // UI
 let sensorsActive = false;
 
+// IDLE SYSTEM
+let lastInteractionTime = 0;
+let isIdleAnimation = false;
+let idleStartTime = 0;
+const IDLE_DELAY = 15000;   // 15 seconds
+const IDLE_DURATION = 5000; // 5 seconds
+
+
 // ==============================================
 // PRELOAD
 // ==============================================
@@ -66,6 +75,7 @@ function preload() {
   characterImages.stressed = loadImage('sasha-crumple.png');
   characterImages.stretched = loadImage('sasha-front-ripped.png');
   characterImages.compressed = loadImage('sasha-rolled.png');
+  characterImages.angry = loadImage('sasha-angry.gif');
 }
 
 // ==============================================
@@ -81,6 +91,12 @@ function setup() {
 
   ['touchstart','touchmove','touchend','touchcancel'].forEach(ev=>{
     canvasElement.addEventListener(ev, e=>e.preventDefault(), { passive:false });
+
+    canvasElement.addEventListener(ev, e=>{
+  e.preventDefault();
+  lastInteractionTime = millis();
+}, { passive:false });
+
   });
 
   textAlign(CENTER, CENTER);
@@ -101,6 +117,10 @@ function draw() {
   background(0);
 
   sensorsActive = window.sensorsEnabled || false;
+
+  // detect idle
+updateIdleSystem();
+
 
   updateShakeIntensity();
   updateStressParameter();
@@ -166,6 +186,11 @@ function updateStretching() {
 // IMAGE SELECTION
 // ==============================================
 function updateCharacterAppearance() {
+  if (isIdleAnimation) {
+    currentCharacterImg = characterImages.angry; 
+    return;
+  }
+
   if (isStressed) currentCharacterImg = characterImages.stressed;
   else if (stretchFactor > 1.2) currentCharacterImg = characterImages.stretched;
   else if (stretchFactor < 0.8) currentCharacterImg = characterImages.compressed;
@@ -184,6 +209,7 @@ function drawTransformedCharacter() {
   push();
   translate(character.x + translateX, character.y + translateY);
   rotate(rotationAngle);
+  scale(uniformScale);
   imageMode(CENTER);
 
   image(img, 0, -200, scaledW*1.2, scaledH/1.8);
@@ -200,6 +226,7 @@ function deviceShaken() {
   shakeIntensity = constrain(shakeIntensity + 1.0, 0, 10);
   stress = constrain(stress + STRESS_SHAKE_INCREASE, 0, 100);
   triggerStressedState();
+  lastInteractionTime = millis();
 }
 
 function triggerStressedState() {
@@ -241,6 +268,46 @@ function updateStressJitter() {
   character.x = width/2 + jitterX;
   character.y = height/2 + jitterY;
 }
+
+function updateIdleSystem() {
+  let now = millis();
+
+  // --- detect ANY interaction ---
+  let interacting = false;
+
+  if (touches.length > 0) interacting = true;
+  if (shakeIntensity > 0.2) interacting = true;
+
+  // If interacting, reset idle timer
+  if (interacting && !isIdleAnimation) {
+    lastInteractionTime = now;
+  }
+
+  // --- trigger idle mode ---
+  if (!isIdleAnimation && now - lastInteractionTime > IDLE_DELAY) {
+    isIdleAnimation = true;
+    idleStartTime = now;
+
+    // change image
+    currentCharacterImg = characterImages.stressed;
+
+    // zoom in
+    uniformScale = 1.4;
+
+    // small shake
+    shakeIntensity = 4;
+  }
+
+  // --- exit idle mode after duration ---
+  if (isIdleAnimation && now - idleStartTime > IDLE_DURATION) {
+    isIdleAnimation = false;
+
+    // restore original
+    uniformScale = 1;
+    shakeIntensity = 0;
+  }
+}
+
 
 // ==============================================
 // TOUCH → CHARACTER CHECK
