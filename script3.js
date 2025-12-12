@@ -186,7 +186,7 @@ function drawTransformedCharacter() {
   rotate(rotationAngle);
   imageMode(CENTER);
 
-  image(img, 0, -200, scaledW, scaledH/2);
+  image(img, 0, -200, scaledW*1.2, scaledH/1.8);
   pop();
 }
 
