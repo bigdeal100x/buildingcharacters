@@ -236,10 +236,7 @@ function draw() {
   
   // Show enable button if sensors not enabled
   if (!sensorsEnabled && typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
-    fill(255, 255, 0);
-    textSize(32);
-    text('Tap "Enable Shake Detection" button to use shake feature', width/2, height/2 + 150);
-    textSize(24);
+    fill(255, 0, 0);
   }
 }
 
