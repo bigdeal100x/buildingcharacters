@@ -328,7 +328,7 @@ function drawTransformedCharacter() {
   imageMode(CENTER);
   
   // Draw character image
-  image(img, 0, 0, scaledW, scaledH);
+  image(img, 0, -200, scaledW*1.2, scaledH/1.7);
   
   pop();
 }
