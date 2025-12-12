@@ -55,6 +55,12 @@ let idleStartTime = 0;
 const IDLE_DELAY = 15000;   // 15 seconds until angry
 const IDLE_DURATION = 5000; // 5 seconds angry
 
+// Device motion variables
+let lastAccelerationX = 0;
+let lastAccelerationY = 0;
+let lastAccelerationZ = 0;
+let sensorsEnabled = false;
+
 // PRELOAD
 function preload() {
   characterImages.normalRight = loadImage('sasha.jpg');
@@ -92,12 +98,95 @@ function setup() {
   textSize(24);
 
   setupCharacter();
+  
+  // Initialize device motion
+  initDeviceMotion();
 }
 
 function setupCharacter() {
   character = { x: width / 2, y: height / 2 };
   currentCharacterImg = characterImages.normalRight;
   lastInteractionTime = millis();
+}
+
+// INITIALIZE DEVICE MOTION
+function initDeviceMotion() {
+  if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+    // iOS 13+ requires permission
+    let permissionBtn = createButton('Enable Shake Detection');
+    permissionBtn.position(width/2 - 100, height/2 + 200);
+    permissionBtn.style('font-size', '20px');
+    permissionBtn.style('padding', '15px 30px');
+    permissionBtn.style('background-color', '#4CAF50');
+    permissionBtn.style('color', 'white');
+    permissionBtn.style('border', 'none');
+    permissionBtn.style('border-radius', '5px');
+    permissionBtn.mousePressed(requestMotionPermission);
+  } else {
+    // Android or non-iOS devices
+    window.addEventListener('devicemotion', handleDeviceMotion);
+    sensorsEnabled = true;
+  }
+}
+
+function requestMotionPermission() {
+  DeviceMotionEvent.requestPermission()
+    .then(permissionState => {
+      if (permissionState === 'granted') {
+        window.addEventListener('devicemotion', handleDeviceMotion);
+        sensorsEnabled = true;
+        document.querySelector('button').remove();
+        console.log('Shake detection enabled!');
+      }
+    })
+    .catch(console.error);
+}
+
+// HANDLE DEVICE MOTION FOR SHAKE DETECTION
+function handleDeviceMotion(event) {
+  if (!sensorsEnabled) return;
+  
+  let acceleration = event.acceleration;
+  if (!acceleration) return;
+  
+  let accX = acceleration.x || 0;
+  let accY = acceleration.y || 0;
+  let accZ = acceleration.z || 0;
+  
+  // Calculate change in acceleration
+  let deltaX = Math.abs(accX - lastAccelerationX);
+  let deltaY = Math.abs(accY - lastAccelerationY);
+  let deltaZ = Math.abs(accZ - lastAccelerationZ);
+  
+  // Update last values
+  lastAccelerationX = accX;
+  lastAccelerationY = accY;
+  lastAccelerationZ = accZ;
+  
+  // Check if device is being shaken (threshold can be adjusted)
+  let shakeThreshold = 15; // Higher = need harder shake
+  
+  if (deltaX > shakeThreshold || deltaY > shakeThreshold || deltaZ > shakeThreshold) {
+    // Simulate deviceShaken() function
+    shakeDetected();
+  }
+}
+
+// SHAKE DETECTED - called from device motion handler
+function shakeDetected() {
+  if (!sensorsEnabled) return;
+  
+  shakeIntensity = constrain(shakeIntensity + 1.0, 0, 10);
+  stress = constrain(stress + STRESS_SHAKE_INCREASE, 0, 100);
+  triggerStressedState();
+  lastInteractionTime = millis();
+  
+  // Cancel idle if active
+  if (isIdleAnimation) {
+    exitIdleAnimation();
+  }
+  
+  console.log("Shake detected! Stress:", stress);
 }
 
 // DRAW LOOP
@@ -116,10 +205,19 @@ function draw() {
   
   // Debug display
   fill(255);
-  text(`Stretch: ${stretchFactor.toFixed(2)} | Idle: ${isIdleAnimation}`, width/2, 50);
+  text(`Stretch: ${stretchFactor.toFixed(2)} | Stress: ${stress.toFixed(1)} | Shake: ${shakeIntensity.toFixed(2)}`, width/2, 50);
+  text(`Idle: ${isIdleAnimation} | Sensors: ${sensorsEnabled}`, width/2, 80);
+  
+  // Show enable button if sensors not enabled
+  if (!sensorsEnabled && typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+    fill(255, 255, 0);
+    textSize(32);
+    text('Tap "Enable Shake Detection" button to use shake feature', width/2, height/2 + 150);
+    textSize(24);
+  }
 }
 
-// STRETCHING SYSTEM - SIMPLIFIED
+// STRETCHING SYSTEM
 function updateStretching() {
   if (touches && touches.length >= 2) {
     let t1 = touches[0];
@@ -180,7 +278,7 @@ function updateStretching() {
   }
 }
 
-// IMAGE SELECTION - FIXED PRIORITY
+// IMAGE SELECTION
 function updateCharacterAppearance() {
   // IDLE (ANGRY) STATE - highest priority, but check if idle is active
   if (isIdleAnimation) {
@@ -232,30 +330,10 @@ function drawTransformedCharacter() {
   // Draw character image
   image(img, 0, 0, scaledW, scaledH);
   
-  // Debug: show touch area
-  if (false) { // Set to true to debug touch area
-    noFill();
-    stroke(255, 0, 0);
-    strokeWeight(2);
-    rect(-scaledW/2, -scaledH/2, scaledW, scaledH);
-  }
-  
   pop();
 }
 
-// SHAKE + STRESS SYSTEM
-function deviceShaken() {
-  shakeIntensity = constrain(shakeIntensity + 1.0, 0, 10);
-  stress = constrain(stress + STRESS_SHAKE_INCREASE, 0, 100);
-  triggerStressedState();
-  lastInteractionTime = millis();
-  
-  // Cancel idle if active
-  if (isIdleAnimation) {
-    exitIdleAnimation();
-  }
-}
-
+// STRESS SYSTEM FUNCTIONS
 function triggerStressedState() {
   isStressed = true;
   stressCooldown = 60;
@@ -351,19 +429,13 @@ function exitIdleAnimation() {
   lastInteractionTime = millis(); // Reset interaction timer
 }
 
-// TOUCH → CHARACTER CHECK - SIMPLIFIED
+// TOUCH → CHARACTER CHECK
 function isTouchOnCharacter(x, y) {
-  // Simple circle collision for now
-  let charRadius = 150; // Approximate radius
+  // Simple circle collision
+  let charRadius = 150;
   let dx = x - (character.x + translateX);
   let dy = y - (character.y + translateY);
   return dx * dx + dy * dy < charRadius * charRadius;
-}
-
-function areBothTouchesOnCharacter() {
-  // For stretching, we don't need to check if touches are on character
-  // Let user stretch from anywhere on screen
-  return touches.length >= 2;
 }
 
 // WINDOW RESIZE
@@ -373,11 +445,10 @@ function windowResized() {
   character.y = height / 2;
 }
 
-// UI FUNCTIONS (stubs)
-function lockGestures() {
-  // Your gesture locking implementation
-}
-
-function enableGyroTap(message) {
-  // Your gyro tap implementation
+// FALLBACK SHAKE FUNCTION FOR NON-MOBILE (keyboard testing)
+function keyPressed() {
+  if (key === 's' || key === 'S') {
+    // Simulate shake with 'S' key for testing on desktop
+    shakeDetected();
+  }
 }
