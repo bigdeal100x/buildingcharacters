@@ -230,9 +230,10 @@ function draw() {
   drawTransformedCharacter();
   
   // Debug display
-  fill(255);
-  text(`Stretch: ${stretchFactor.toFixed(2)} | Stress: ${stress.toFixed(1)} | Shake: ${shakeIntensity.toFixed(2)}`, width/2, 50);
-  text(`Idle: ${isIdleAnimation} | Sensors: ${sensorsEnabled}`, width/2, 80);
+//   fill(255);
+//   font(timesnewroman);
+//   text(`Stretch: ${stretchFactor.toFixed(2)} | Stress: ${stress.toFixed(1)} | Shake: ${shakeIntensity.toFixed(2)}`, width/2, 50);
+//   text(`Idle: ${isIdleAnimation} | Sensors: ${sensorsEnabled}`, width/2, 80);
   
   // Show enable button if sensors not enabled
   if (!sensorsEnabled && typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
